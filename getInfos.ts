@@ -4,6 +4,7 @@ const isHTMLListElement = (elem: any): elem is HTMLLIElement => (elem instanceof
 const isHTMLAnchorElement = (elem: any): elem is HTMLAnchorElement => (elem instanceof HTMLAnchorElement);
 const isHTMLDivElement = (elem: any): elem is HTMLDivElement => (elem instanceof HTMLDivElement);
 const isHTMLImageElement = (elem: any): elem is HTMLImageElement => (elem instanceof HTMLImageElement);
+const isHTMLSpanElement = (elem: any): elem is HTMLSpanElement => (elem instanceof HTMLSpanElement);
 const isNull = (elem: any): elem is null => (null === elem);
 
 const getInfos = () => {
@@ -19,7 +20,7 @@ const getInfos = () => {
     if (isNull(resultItemElement) || !isHTMLListElement(resultItemElement)) return 'result item error';
 
     const nameElement = resultItemElement.querySelector('.resultItem-name > a');
-    console.log(nameElement);
+
     if (isNull(nameElement) || !isHTMLAnchorElement(nameElement)) return 'name error';
     const name = (nameElement as HTMLAnchorElement).innerText;
   
@@ -31,27 +32,37 @@ const getInfos = () => {
     if (isNull(avatarElement) || !isHTMLImageElement(avatarElement)) return 'avatar error';
     const imageUrl = (avatarElement as HTMLImageElement).src;
 
-    // /* price */
-    // const averagePriceInfo = informations.querySelector('.resultItem-averagePrice').innerText;
-    // const averagePrice = parseFloat(averagePriceInfo.split('moyen ')[1].split('€')[0].trim());
+    /* price */
+    const averagePriceElement = resultItemElement.querySelector('.resultItem-averagePrice');
+    if (isNull(averagePriceElement) || !isHTMLDivElement(averagePriceElement)) return 'average price error';
+    const averagePrice = parseFloat((averagePriceElement as HTMLDivElement).innerText.split('moyen ')[1].split('€')[0].trim().replace(',', '.'));
 
-    // /* grades */
-    // const average = parseFloat(rating.querySelector('.rating-ratingValue').innerText);
-    // const opinionNumber = parseInt(rating.querySelector('.resultItem-rating > .reviewsCount > a').innerText.split(' ')[0]);
+    /* grades */
+    const averageElement = resultItemElement.querySelector('.rating-ratingValue');
+    if (isNull(averageElement) || !isHTMLSpanElement(averageElement)) return 'average grade error';
+    const averageGrade = parseFloat((averageElement as HTMLSpanElement).innerText.trim().replace(',', '.'));
 
-    // /* restaurant types */
-    // const restaurantTypes = [...informations.querySelectorAll('.restaurantTag')].map(t => t.innerText);
+    const opinionElement = resultItemElement.querySelector('.resultItem-rating > .reviewsCount > a');
+    if (isNull(opinionElement) || !isHTMLAnchorElement(opinionElement)) return 'opinion grade error';
+    const opinionNumber = parseFloat((opinionElement as HTMLAnchorElement).innerText.split(' ')[0]);
+    //const opinionNumber = parseInt(rating.querySelector('.resultItem-rating > .reviewsCount > a').innerText.split(' ')[0]);
+
+    /* restaurant types */
+    const restaurantTypes = [...resultItemElement.querySelectorAll('.restaurantTag')].map(t => {
+      if (isNull(t) || !isHTMLSpanElement(t)) return 'rest tag error';
+      return t.innerText;
+    });
 
     return {
       imageUrl,
       name,
       address,
-      // averagePrice,
-      // grade: {
-      //   average,
-      //   opinionNumber,
-      // },
-      // restaurantTypes,
+      averagePrice,
+      grade: {
+        averageGrade,
+        opinionNumber,
+      },
+      restaurantTypes,
     };
   });
 
