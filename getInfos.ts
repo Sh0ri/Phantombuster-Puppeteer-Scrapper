@@ -45,7 +45,6 @@ const getInfos = () => {
     const opinionElement = resultItemElement.querySelector('.resultItem-rating > .reviewsCount > a');
     if (isNull(opinionElement) || !isHTMLAnchorElement(opinionElement)) return 'opinion grade error';
     const opinionNumber = parseFloat((opinionElement as HTMLAnchorElement).innerText.split(' ')[0]);
-    //const opinionNumber = parseInt(rating.querySelector('.resultItem-rating > .reviewsCount > a').innerText.split(' ')[0]);
 
     /* restaurant types */
     const restaurantTypes = [...resultItemElement.querySelectorAll('.restaurantTag')].map(t => {
