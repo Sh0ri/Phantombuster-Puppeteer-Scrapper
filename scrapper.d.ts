@@ -1,13 +1,13 @@
-interface IRestaurant {
+export interface IRestaurant {
   name: string;
   address : string;
   imageUrl: string;
   averagePrice: number;
   grade: {
-    average : number;
+    averageGrade : number;
     opinionNumber: number;
   }
-  restaurantType: string;
+  restaurantTypes: string[];
 }
 
-interface IScrapperResult extends Array<IRestaurant> { }
+export interface IScrapperResult extends Array<IRestaurant> { }
