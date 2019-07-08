@@ -1,7 +1,0 @@
-[
-    name: 'the fork' # Arbitrary name, only used for logs
-    apiKey: 'uMUaFhHrPUzr1vXIQScqKuEE6IHNoqDH' # Phantombuster API key (which identifies the account)
-    # Mappings of Phantombuster script names to local script files (relative to the phantombuster.cson file)
-    scripts:
-        'thefork.js': 'thefork.js'
-]
