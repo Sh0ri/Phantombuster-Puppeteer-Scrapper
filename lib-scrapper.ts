@@ -1,3 +1,5 @@
+"use strict";
+
 import * as tGuards from './lib-typeGuards';
 import { IScrapperResult, IRestaurant } from './scrapper';
 
