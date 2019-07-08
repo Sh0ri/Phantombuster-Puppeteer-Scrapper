@@ -1,6 +1,8 @@
 "phantombuster command: nodejs"
 "phantombuster package: 5"
 "phantombuster flags: save-folder"
+"phantombuster dependencies: lib-typeGuards.js, lib-scrapper.js";
+
 
 import Buster from "phantombuster";
 import { Browser, launch } from 'puppeteer';
