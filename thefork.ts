@@ -76,7 +76,7 @@ const scrapTheFork = async (url: string, browser: Browser) => {
  * @param {string[]} args
  */
 const launchScrapping = (args: string[]): void => {
-  const toScrap = args[2];
+  const URLtoScrap = args[2];
   launch({ 
     headless: true, 
     args: [
@@ -89,7 +89,7 @@ const launchScrapping = (args: string[]): void => {
       '--user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3312.0 Safari/537.36"'
     ],
   })
-    .then((browser: Browser) => scrapTheFork(toScrap, browser))
+    .then((browser: Browser) => scrapTheFork(URLtoScrap, browser))
     .catch(printErrorAndExit); 
 };
 
