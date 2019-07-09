@@ -1,98 +1,108 @@
 "phantombuster command: nodejs"
 "phantombuster package: 5"
 "phantombuster flags: save-folder"
+"phantombuster dependencies: lib-typeGuards.js, lib-scrapper.js";
+
 
 import Buster from "phantombuster";
-import { Browser, launch, Frame } from 'puppeteer';
+import { Browser, launch } from 'puppeteer';
+
+import { isHTMLFrameElement } from './lib-typeGuards';
+import getAllRestaurantsInfos from './lib-scrapper';
 
 const buster = new Buster();
 
-const scrapTheForkResultPage = async (browser: Browser) => {
+const scrapTheFork = async (url: string, browser: Browser) => {
   console.log('>> SCRAPPING STARTED');
-  const URL = 'https://www.lafourchette.com/recherche/paris/415144?searchText=&idRestaurant=&idGooglePlace=&locality=&googlePlaceType=&geolocated=&fromSearchBar=1&date=2019-07-19&time=19%3A30%3A00&pax=2&titleSubstitute=&localeCode=FR&productLineId=&foodTypeTag=429&coordinate=&sb=1&is_restaurant_autocomplete=0';
   const page = await browser.newPage(); 
   await page.goto(
-    URL,
+    url,
     { waitUntil: 'load' },
   );
-  await page.screenshot({ path: 'myscreenshot.png', fullPage: true });   
-  await buster.saveText(await page.content(), 'html');
+  await page.screenshot({ path: 'pre-captcha.png', fullPage: true });   
+  // await buster.saveText(await page.content(), 'page.html'); // debug purpose
 
-  try {
+  /* find the frame where the captcha is */
+  const frames = await page.frames();
+  const captchaFrame = frames.find(f => f.url().includes('datado'));
+  if (!isHTMLFrameElement(captchaFrame)) throw new Error('Frame is unparsable');
 
-    const frames = await page.frames();
-    const captchaFrame = <Frame> frames.find(f => f.url().includes('datado'));
-    const iframeURL = captchaFrame.url();
-    const captchaToken = await captchaFrame.evaluate(() => {   
-      const captchaDOM = <HTMLInputElement> document.querySelector("#captcha-submit");
-      if (captchaDOM !== null && captchaDOM.hasAttribute('data-sitekey')) {
-        const token = <string> captchaDOM.getAttribute('data-sitekey');
-        return token;
-      }
-    });
-  
-    if (!captchaToken) throw new Error();
+  /* get the captcha token */
+  const captchaToken = await captchaFrame.evaluate((): null | string => {
+    const isHTMLInputElement = (elem: any): elem is HTMLInputElement => (elem instanceof HTMLInputElement);
+    const isNull = (elem: any): elem is null => (elem === null); 
 
-    console.log('>> CAPTCHA IS BEEING DECODED');
-    const result = await buster.solveNoCaptcha(iframeURL, captchaToken);
-    console.log(">> CAPTCHA RESPONSE:", result);
-
-    await captchaFrame.evaluate((result) => {   
-      const captchaDOM = <HTMLTextAreaElement> document.querySelector("#g-recaptcha-response");
-      if (captchaDOM !== null) {
-        captchaDOM.innerHTML = result;
-      }
-    }, result);
-    console.log('>> FINDING GOOGLE FRAME');
-    const googleIFrame = <Frame> frames.find(f => f.url().includes('www.google.com/recaptcha'));
-    console.log('>> CLICKING CATPCHA VALIDATION BUTTON', googleIFrame);
-    await googleIFrame.click('#recaptcha-anchor');
-    await delay(3000);
-    // await page.waitForNavigation();
-    await page.screenshot({ path: 'myscreenshot2.png', fullPage: true });   
-  } catch (err) {
-    console.log("Could not solve reCAPTCHA:", err);
-    await browser.close();
-    throw new Error(err);
-  }
-
-  await browser.close();
-
-  // let results: IScrapperResult = [];
-
-  // for(let i = 0; i < 5; i++) {
-  //   const newResto: IRestaurant = {
-  //     name : "",
-  //     address: "??",
-  //     imageUrl: "??",
-  //     averagePrice: -1,
-  //     grade: {
-  //       average: 10,
-  //       opinionNumber: 100,
-  //     },
-  //     restaurantType: 'whatever',
-  //   };
-  //   results.push(newResto);
-  // } 
-  // buster.setResultObject(results);
-};
-function delay(time: number) {
-  return new Promise(function(resolve) { 
-      setTimeout(resolve, time)
+    const captchaElement = document.querySelector("#captcha-submit");
+    if (isNull(captchaElement) || !isHTMLInputElement(captchaElement)) return null;
+    if (captchaElement.hasAttribute('data-sitekey')) {
+      const token = captchaElement.getAttribute('data-sitekey') as string;
+      return token;
+    }
+    return null;
   });
-}
-const launchScrapping = (): void => {
+  
+  if (!captchaToken) throw new Error('Unparsable token');
+
+  /* solve the captcha */
+  console.log('>> CAPTCHA IS BEEING DECODED');
+  const captchaResult = await buster.solveNoCaptcha(captchaFrame.url(), captchaToken);
+  console.log(">> CAPTCHA SOLUTION TOKEN:", captchaResult);
+
+  /* inject the captcha solution */
+  if(!await captchaFrame.evaluate((result): boolean => {
+    const isHTMLTextAreaElement = (elem: any): elem is HTMLTextAreaElement => (elem instanceof HTMLTextAreaElement);
+    const isNull = (elem: any): elem is null => (elem === null);
+
+    const captchaElement = document.querySelector("#g-recaptcha-response");
+
+    if (isNull(captchaElement) || !isHTMLTextAreaElement(captchaElement)) return false;
+    (captchaElement as HTMLTextAreaElement).innerHTML = result;
+    return true;
+    
+  }, captchaResult)) throw new Error('Couldnt set captcha result');
+
+  /* wait for the navigation */
+  await page.waitForNavigation();
+  // await page.screenshot({ path: 'afterclick.png', fullPage: true }); // debug purpose
+
+  /* launch the scrapping */
+  const resultingRestaurants = await page.evaluate(getAllRestaurantsInfos);
+  await buster.setResultObject(resultingRestaurants);
+  await browser.close();
+  process.exit(0);
+};
+
+/**
+ * main function of the phantom
+ *
+ * @param {string[]} args
+ */
+const launchScrapping = (args: string[]): void => {
+  const URLtoScrap = args[2];
   launch({ 
     headless: true, 
-    args: ["--no-sandbox"],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-infobars',
+      '--window-position=0,0',
+      '--ignore-certifcate-errors',
+      '--ignore-certifcate-errors-spki-list',
+      '--user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3312.0 Safari/537.36"'
+    ],
   })
-    .then(scrapTheForkResultPage)
+    .then((browser: Browser) => scrapTheFork(URLtoScrap, browser))
     .catch(printErrorAndExit); 
 };
 
+/**
+ * print an Error and exit the process
+ *
+ * @param {Error} e
+ */
 const printErrorAndExit = (e: Error) => {
   console.log(`An error occured: ${e}`);
   process.exit(1);
 };
 
-launchScrapping();
+launchScrapping(process.argv);

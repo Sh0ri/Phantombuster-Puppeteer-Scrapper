@@ -1,3 +1,5 @@
+"use strict";
+
 /* type guards */
 export const isNull = (elem: any): elem is null => (null === elem);
 export const isElement = (elem: any): elem is HTMLElement => (elem instanceof HTMLElement);
